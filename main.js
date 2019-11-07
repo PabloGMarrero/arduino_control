@@ -1,11 +1,12 @@
+const express = require('express');
+const app = express();
 const http = require('http');
-const socketIo = require('socket.io');
-
+const server = http.createServer(app);
 const port = process.env.PORT || 5000
-const server = http.createServer().listen(port, () => {} )
+const io = require('socket.io').listen(server);
 
 const five = require('johnny-five');
-const board = new five.Board({port: 'COM4'});
+const board = new five.Board({port: '/dev/ttyACM0'});
 
 const pin = {
   12: {
@@ -16,7 +17,6 @@ const pin = {
   },
 };
 
-const io = socketIo(server);
 
 board.on('ready', () => {
   const led = new five.Led(12);
@@ -24,9 +24,18 @@ board.on('ready', () => {
   pin[12].led = led;
 });
 
+app.use(express.static(__dirname + '/public'));
+
+
+app.get('/', (req, res)=>{
+  res.render('index.html');
+})
+
 io.sockets.on('connection', socket => {
   socket.on('message', (channel, message) => {
     if (channel === 'on') pin[message].led.on();
     if (channel === 'off') pin[message].led.off();
   });
 });
+
+server.listen(port);
